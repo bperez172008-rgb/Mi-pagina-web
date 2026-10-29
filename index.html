@@ -81,8 +81,8 @@
         window.userPoints = 0;
         window.userActivities = [];
         window.usedCodes = [];
-        document.getElementById('auth-not-logged').classList.remove('hidden');
-        document.getElementById('auth-logged').classList.add('hidden');
+        document.getElementById('auth-not-logged').classList.add('hidden');
+        document.getElementById('auth-logged').classList.remove('hidden');
         updatePointsDisplay();
       }
     });
@@ -495,10 +495,10 @@
       <button onclick="closeCodeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
       <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4"><i data-lucide="key-round" class="w-6 h-6"></i></div>
       <h3 class="font-display font-black text-2xl text-white mb-2">Canjear Código Municipal</h3>
-      <p class="text-slate-300 text-xs mb-6">Ingresá el código entregado por el municipio para sumar puntos a tu cuenta en la nube.</p>
+      <p class="text-slate-300 text-xs mb-6">Ingresá cualquiera de los 50 códigos oficiales (Ej: MZA-01 hasta MZA-50) para sumar puntos.</p>
       
       <form onsubmit="submitCode(event)" class="space-y-4">
-        <input type="text" id="municipal-code" required placeholder="Ej: MZA-2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-center text-lg font-mono tracking-widest text-amber-400 focus:border-amber-500 focus:outline-none uppercase">
+        <input type="text" id="municipal-code" required placeholder="Ej: MZA-01" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-center text-lg font-mono tracking-widest text-amber-400 focus:border-amber-500 focus:outline-none uppercase">
         <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3.5 rounded-xl transition">
           Validar Código y Sumar Puntos
         </button>
@@ -690,23 +690,30 @@
     }
     function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
     
+    // GENERADOR AUTOMÁTICO DE LOS 50 CÓDIGOS (MZA-01 hasta MZA-50)
+    function isValidMunicipalCode(code) {
+      // 1. Códigos especiales fijos
+      const fixedCodes = ["MZA-2026", "VERDE", "MENDOZA"];
+      if (fixedCodes.includes(code)) return true;
+
+      // 2. Validación automática para los 50 códigos del MZA-01 al MZA-50 (o MZA-1 al MZA-50)
+      const regex = /^MZA-(?:0?[1-9]|[1-4][0-9]|50)$/;
+      return regex.test(code);
+    }
+
     async function submitCode(e) {
       e.preventDefault();
       const codeInput = document.getElementById('municipal-code');
       const code = codeInput.value.trim().toUpperCase();
       
-      const validCodes = ["MZA-2026", "VERDE", "MENDOZA"];
-
-      if (validCodes.includes(code)) {
-        // Control estricto para que cada código se use una sola vez por usuario
+      if (isValidMunicipalCode(code)) {
         if (window.usedCodes && window.usedCodes.includes(code)) {
           closeCodeModal();
           codeInput.value = '';
-          showCustomAlert("Código Ya Utilizado", "Ya habías canjeado este código anteriormente. ¡Cada código municipal es de uso único por usuario!");
+          showCustomAlert("Código Ya Utilizado", `Ya habías canjeado el código "${code}" anteriormente. ¡Cada código municipal es de uso único!`);
           return;
         }
 
-        // Registrar código como usado en la nube
         window.usedCodes.push(code);
         const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
         await window.updateDoc(userRef, { usedCodes: window.usedCodes });
@@ -718,7 +725,7 @@
       } else {
         closeCodeModal();
         codeInput.value = '';
-        showCustomAlert("Código Inválido", "El código ingresado no existe o es incorrecto. Verificá con el personal municipal.");
+        showCustomAlert("Código Inválido", "El código ingresado no existe. Utilizá un código válido entre MZA-01 y MZA-50.");
       }
     }
 
