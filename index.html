@@ -363,9 +363,9 @@
       </button>
       <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">Inscripción Oficial</span>
       <h3 id="reg-event-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Inscribirme al Voluntariado</h3>
-      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará a cambio un código único para acreditar tus puntos.</p>
+      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará un código único para acreditar tus puntos.</p>
       
-      <!-- Formulario con ID miFormulario y nombres listos para EmailJS -->
+      <!-- ID miFormulario y Service ID corregido con 'l' al final -->
       <form id="miFormulario" onsubmit="submitRegistration(event)" class="space-y-4">
         <input type="hidden" id="reg-event-hidden" name="event_name">
         <div>
@@ -474,13 +474,13 @@
       document.getElementById('register-modal').classList.add('hidden');
     }
 
-    // ENVÍO DE CORREO CON EMAILJS Y DIAGNÓSTICO DE ERROR REAL
+    // ENVÍO DE CORREO CON EL SERVICE ID CORRECTO (service_5e4mq5l)
     function submitRegistration(e) {
       e.preventDefault();
       const formElement = document.getElementById('miFormulario');
       const name = document.getElementById('reg-name').value;
 
-      emailjs.sendForm('service_5e4mq5', 'template_1ljk3tl', formElement)
+      emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
         .then(function() {
           closeRegisterModal();
           
@@ -490,8 +490,7 @@
           alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.\nTe esperamos en "${selectedEvent}".`);
           formElement.reset();
         }, function(error) {
-          // AQUÍ TE MOSTRARÁ EL ERROR TÉCNICO EXACTO DE EMAILJS PARA SABER QUÉ FALLA
-          alert('Error técnico de EmailJS: ' + JSON.stringify(error));
+          alert('Hubo un error al enviar el correo: ' + JSON.stringify(error));
           console.log('FAILED...', error);
         });
     }
