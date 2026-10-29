@@ -81,8 +81,8 @@
         window.userPoints = 0;
         window.userActivities = [];
         window.usedCodes = [];
-        document.getElementById('auth-not-logged').classList.add('hidden');
-        document.getElementById('auth-logged').classList.remove('hidden');
+        document.getElementById('auth-not-logged').classList.remove('hidden');
+        document.getElementById('auth-logged').classList.add('hidden');
         updatePointsDisplay();
       }
     });
@@ -148,6 +148,11 @@
         </div>
 
         <div class="flex items-center gap-3">
+          <!-- BOTÓN RÁPIDO PARA SUMAR PUNTOS Y PROBAR REGALOS -->
+          <button onclick="addPointsToCloud(500)" class="bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5" title="Sumar puntos de prueba">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> +500 PTS Prueba
+          </button>
+
           <button onclick="openCodeModal()" class="bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
             <i data-lucide="key-round" class="w-4 h-4"></i> Canjear Código
           </button>
@@ -572,6 +577,9 @@
       
       const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
       await window.updateDoc(userRef, { points: window.userPoints });
+      
+      // Muestra un aviso flotante claro al sumar puntos
+      showCustomAlert("¡Puntos Añadidos!", `¡Se sumaron +${amount} Puntos a tu cuenta!\n\nTotal actual: ${window.userPoints} PTS.`);
       return true;
     }
 
@@ -673,7 +681,6 @@
           await window.updateDoc(userRef, { registeredActivities: window.userActivities });
 
           await addPointsToCloud(50);
-          showCustomAlert("¡Inscripción Exitosa!", `¡Felicitaciones ${name}!\n\nSe envió el correo de confirmación y sumaste +50 Puntos a tu cuenta.`);
           formElement.reset();
         }, function(error) {
           showCustomAlert("Error", "Hubo un inconveniente al procesar la inscripción.");
@@ -690,20 +697,17 @@
     }
     function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
     
-    // VALIDACIÓN FLEXIBLE DE CÓDIGOS MUNICIPALES (Acepta MZA-01, MZA1, o solo números del 1 al 50)
+    // VALIDACIÓN FLEXIBLE DE CÓDIGOS MUNICIPALES
     function normalizeAndValidateCode(inputCode) {
       const fixedCodes = ["MZA-2026", "VERDE", "MENDOZA"];
       if (fixedCodes.includes(inputCode)) return inputCode;
 
-      // Limpiar espacios y guiones para comparar fácil
       let clean = inputCode.replace(/[^A-Z0-9]/g, '');
 
-      // Si escribieron solo un número del 1 al 50 (ej: "5" o "12")
       if (/^(?:[1-9]|[1-4][0-9]|50)$/.test(clean)) {
         return "MZA-" + clean.padStart(2, '0');
       }
 
-      // Si escribieron MZA y un número (ej: "MZA1" o "MZA01")
       let match = clean.match(/^MZA(0?[1-9]|[1-4][0-9]|50)$/);
       if (match) {
         return "MZA-" + match[1].padStart(2, '0');
@@ -734,7 +738,6 @@
         closeCodeModal();
         codeInput.value = '';
         await addPointsToCloud(200);
-        showCustomAlert("¡Código Canjeado con Éxito!", `¡El municipio validó el código "${normalizedCode}"!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
       } else {
         closeCodeModal();
         codeInput.value = '';
