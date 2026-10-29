@@ -355,7 +355,7 @@
 
   </main>
 
-  <!-- MODAL DE INSCRIPCIÓN AL VOLUNTARIADO (CONECTADO A EMAILJS) -->
+  <!-- MODAL DE INSCRIPCIÓN AL VOLUNTARIADO -->
   <div id="register-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-8 shadow-2xl relative">
       <button onclick="closeRegisterModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
@@ -363,9 +363,8 @@
       </button>
       <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">Inscripción Oficial</span>
       <h3 id="reg-event-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Inscribirme al Voluntariado</h3>
-      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará un código único para acreditar tus puntos.</p>
+      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará a cambio un código único para acreditar tus puntos.</p>
       
-      <!-- ID miFormulario y Service ID corregido con 'l' al final -->
       <form id="miFormulario" onsubmit="submitRegistration(event)" class="space-y-4">
         <input type="hidden" id="reg-event-hidden" name="event_name">
         <div>
@@ -443,7 +442,7 @@
   <script>
     lucide.createIcons();
 
-    let points = 0; // Puntos iniciales en cero
+    let points = 0;
     let selectedEvent = "";
     let eventPoints = 0;
 
@@ -474,7 +473,6 @@
       document.getElementById('register-modal').classList.add('hidden');
     }
 
-    // ENVÍO DE CORREO CON EL SERVICE ID CORRECTO (service_5e4mq5l)
     function submitRegistration(e) {
       e.preventDefault();
       const formElement = document.getElementById('miFormulario');
@@ -483,24 +481,18 @@
       emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
         .then(function() {
           closeRegisterModal();
-          
           points += 50;
           document.getElementById('user-points').innerText = `${points} PTS`;
-
-          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.\nTe esperamos en "${selectedEvent}".`);
+          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.`);
           formElement.reset();
         }, function(error) {
           alert('Hubo un error al enviar el correo: ' + JSON.stringify(error));
-          console.log('FAILED...', error);
         });
     }
 
-    function openCodeModal() {
-      document.getElementById('code-modal').classList.remove('hidden');
-    }
-    function closeCodeModal() {
-      document.getElementById('code-modal').classList.add('hidden');
-    }
+    function openCodeModal() { document.getElementById('code-modal').classList.remove('hidden'); }
+    function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
+    
     function submitCode(e) {
       e.preventDefault();
       const code = document.getElementById('municipal-code').value.trim().toUpperCase();
@@ -511,17 +503,42 @@
         closeCodeModal();
         alert(`¡Código validado con éxito por el Municipio!\n\nSe acreditaron +200 Puntos de Impacto a tu Pase.`);
       } else {
-        alert("Código inválido o ya utilizado. Verificá con el personal municipal en el evento.");
+        alert("Código inválido o ya utilizado.");
       }
     }
 
+    // LÓGICA DE CANJE DE PREMIOS CON ENVÍO DE QR POR CORREO
     function claimReward(title, cost) {
       if(points >= cost) {
-        points -= cost;
-        document.getElementById('user-points').innerText = `${points} PTS`;
-        alert(`¡Canje confirmado para "${title}"!\nPresentá tu QR en el lugar.`);
+        const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`);
+        if(!userEmail) return;
+
+        const userName = prompt("Ingresá tu Nombre y Apellido:");
+        if(!userName) return;
+
+        // Generar un código único de validación para el QR
+        const qrCodeData = "MZA-REWARD-" + Math.floor(100000 + Math.random() * 900000);
+
+        const params = {
+          to_email: userEmail,
+          to_name: userName,
+          reward_name: title,
+          reward_cost: cost,
+          qr_data: qrCodeData
+        };
+
+        // Enviar EmailJS con los parámetros del QR (REEMPLAZA 'TEMPLATE_ID_CANJES' POR TU ID REAL)
+        emailjs.send('service_5e4mq5l', 'TEMPLATE_ID_CANJES', params)
+          .then(function() {
+            points -= cost;
+            document.getElementById('user-points').innerText = `${points} PTS`;
+            alert(`¡Canje exitoso! Te enviamos el código QR para "${title}" a tu correo (${userEmail}).`);
+          }, function(error) {
+            alert("Error al enviar el Pase QR: " + JSON.stringify(error));
+          });
+
       } else {
-        alert("Necesitás más puntos para canjear este premio. ¡Participá en un voluntariado y pedí tu código al municipio!");
+        alert(`Necesitás ${cost} PTS para canjear este premio. ¡Actualmente tenés ${points} PTS! Inscribite en voluntariados para sumar más puntos.`);
       }
     }
 
