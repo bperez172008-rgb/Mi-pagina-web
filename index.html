@@ -293,7 +293,7 @@
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
             <span class="font-display font-black text-amber-400 text-lg">300 PTS</span>
-            <button onclick="claimReward('Pase BiciTran', 300)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
+            <button onclick="openRewardModal('Pase BiciTran', 300)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
           </div>
         </div>
 
@@ -305,7 +305,7 @@
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
             <span class="font-display font-black text-amber-400 text-lg">450 PTS</span>
-            <button onclick="claimReward('Entrada Nave Cultural', 450)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
+            <button onclick="openRewardModal('Entrada Nave Cultural', 450)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
           </div>
         </div>
 
@@ -317,7 +317,7 @@
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
             <span class="font-display font-black text-amber-400 text-lg">200 PTS</span>
-            <button onclick="claimReward('2x1 Gastronómico', 200)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
+            <button onclick="openRewardModal('2x1 Gastronómico', 200)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
           </div>
         </div>
 
@@ -329,7 +329,7 @@
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
             <span class="font-display font-black text-amber-400 text-lg">150 PTS</span>
-            <button onclick="claimReward('Kit Plantines', 150)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
+            <button onclick="openRewardModal('Kit Plantines', 150)" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Canjear</button>
           </div>
         </div>
       </div>
@@ -386,7 +386,7 @@
 
   </main>
 
-  <!-- MODAL DE NOTIFICACIONES PERSONALIZADO (EN VEZ DE ALERT) -->
+  <!-- MODAL DE NOTIFICACIONES PERSONALIZADO -->
   <div id="custom-alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center relative">
       <div id="alert-icon-container" class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -397,6 +397,32 @@
       <button onclick="closeCustomAlert()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition text-xs">
         Entendido
       </button>
+    </div>
+  </div>
+
+  <!-- MODAL DE CANJE DE PREMIOS -->
+  <div id="reward-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8 shadow-2xl relative">
+      <button onclick="closeRewardModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <span class="bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30">Canje de Beneficio</span>
+      <h3 id="reward-modal-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Canjear Premio</h3>
+      <p id="reward-modal-desc" class="text-slate-300 text-xs mb-6">Ingresa tus datos para recibir el código QR en tu correo.</p>
+      
+      <form onsubmit="submitRewardClaim(event)" class="space-y-4">
+        <input type="hidden" id="rw-name-hidden">
+        <input type="hidden" id="rw-cost-hidden">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Nombre y Apellido</label>
+          <input type="text" id="rw-username" required placeholder="Ej: Bautista Pérez" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Correo Electrónico</label>
+          <input type="email" id="rw-useremail" required placeholder="tuemail@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition">
+          Confirmar Canje y Enviar QR
+        </button>
+      </form>
     </div>
   </div>
 
@@ -517,7 +543,6 @@
     let selectedEvent = "";
     let eventPoints = 0;
 
-    // MODAL DE ALERTA PERSONALIZADO EN PANTALLA
     function showCustomAlert(title, message) {
       document.getElementById('alert-title').innerText = title;
       document.getElementById('alert-message').innerText = message;
@@ -617,9 +642,8 @@
         return;
       }
 
-      // VALIDACIÓN: Evita que se inscriba dos veces a la misma actividad
       if (window.userActivities && window.userActivities.includes(title)) {
-        showCustomAlert("Ya estás inscripto", `Ya te habías registrado anteriormente en "${title}". ¡No puedes duplicar el registro ni sumar puntos dos veces por la misma actividad!`);
+        showCustomAlert("Ya estás inscripto", `Ya te habías registrado anteriormente en "${title}". ¡No puedes duplicar el registro ni sumar puntos dos veces!`);
         return;
       }
 
@@ -639,8 +663,6 @@
       emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
         .then(async function() {
           closeRegisterModal();
-          
-          // Agrega la actividad a la lista del usuario en Firestore para bloquear futuros registros
           window.userActivities.push(selectedEvent);
           const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
           await window.updateDoc(userRef, { registeredActivities: window.userActivities });
@@ -670,51 +692,79 @@
       if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
         await addPointsToCloud(200);
         closeCodeModal();
+        document.getElementById('municipal-code').value = '';
         showCustomAlert("¡Código Canjeado!", "¡El municipio validó tu código con éxito! Se acreditaron +200 Puntos a tu cuenta.");
       } else {
         showCustomAlert("Código Inválido", "El código ingresado es incorrecto o ya fue utilizado.");
       }
     }
 
-    async function claimReward(title, cost) {
+    // GESTIÓN DE CANJE CON MODAL
+    function openRewardModal(title, cost) {
       if (!window.currentUser) {
         showCustomAlert("Acceso Requerido", "Debes iniciar sesión para canjear beneficios.");
         openAuthModal();
         return;
       }
 
-      if(window.userPoints >= cost) {
-        const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`, window.currentUser.email);
-        if(!userEmail) return;
-
-        const userName = prompt("Ingresá tu Nombre y Apellido:");
-        if(!userName) return;
-
-        const qrCodeData = "MZA-REWARD-" + Math.floor(100000 + Math.random() * 900000);
-
-        const params = {
-          to_email: userEmail,
-          to_name: userName,
-          reward_name: title,
-          reward_cost: cost,
-          qr_data: qrCodeData
-        };
-
-        emailjs.send('service_5e4mq5l', 'template_wbvd4sr', params)
-          .then(async function() {
-            window.userPoints -= cost;
-            updatePointsDisplay();
-            const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
-            await window.updateDoc(userRef, { points: window.userPoints });
-            
-            showCustomAlert("¡Canje Exitoso!", `¡Te enviamos el código QR para "${title}" a tu correo (${userEmail})!`);
-          }, function(error) {
-            showCustomAlert("Error de Envío", "Hubo un error al enviar el Pase QR por correo.");
-          });
-
-      } else {
+      if (window.userPoints < cost) {
         showCustomAlert("Puntos Insuficientes", `Necesitás ${cost} PTS para canjear este premio. Actualmente tenés ${window.userPoints} PTS.`);
+        return;
       }
+
+      document.getElementById('rw-name-hidden').value = title;
+      document.getElementById('rw-cost-hidden').value = cost;
+      document.getElementById('reward-modal-title').innerText = `Canjear: ${title}`;
+      document.getElementById('reward-modal-desc').innerText = `Este beneficio cuesta ${cost} PTS. Se te enviará el código QR a tu correo.`;
+      
+      // Prellenar con el email del usuario logueado si existe
+      if (window.currentUser && window.currentUser.email) {
+        document.getElementById('rw-useremail').value = window.currentUser.email;
+      }
+
+      document.getElementById('reward-modal').classList.remove('hidden');
+    }
+
+    function closeRewardModal() {
+      document.getElementById('reward-modal').classList.add('hidden');
+    }
+
+    async function submitRewardClaim(e) {
+      e.preventDefault();
+      const title = document.getElementById('rw-name-hidden').value;
+      const cost = parseInt(document.getElementById('rw-cost-hidden').value);
+      const userEmail = document.getElementById('rw-useremail').value;
+      const userName = document.getElementById('rw-username').value;
+
+      if (window.userPoints < cost) {
+        closeRewardModal();
+        showCustomAlert("Puntos Insuficientes", `No tenés suficientes puntos para este beneficio.`);
+        return;
+      }
+
+      const qrCodeData = "MZA-REWARD-" + Math.floor(100000 + Math.random() * 900000);
+
+      const params = {
+        to_email: userEmail,
+        to_name: userName,
+        reward_name: title,
+        reward_cost: cost,
+        qr_data: qrCodeData
+      };
+
+      emailjs.send('service_5e4mq5l', 'template_wbvd4sr', params)
+        .then(async function() {
+          window.userPoints -= cost;
+          updatePointsDisplay();
+          const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
+          await window.updateDoc(userRef, { points: window.userPoints });
+          
+          closeRewardModal();
+          showCustomAlert("¡Canje Exitoso!", `¡Te enviamos el código QR para "${title}" a tu correo (${userEmail})!`);
+        }, function(error) {
+          closeRewardModal();
+          showCustomAlert("Error de Envío", "Hubo un error al enviar el Pase QR por correo. Intenta nuevamente.");
+        });
     }
 
     function openModal() { document.getElementById('proposal-modal').classList.remove('hidden'); }
@@ -746,7 +796,9 @@
       grid.prepend(card);
       lucide.createIcons();
       closeModal();
-      showCustomAlert("Propuesta Publicada", "¡Tu idea fue enviada con éxito!");
+      document.getElementById('p-title').value = '';
+      document.getElementById('p-desc').value = '';
+      showCustomAlert("Propuesta Publicada", "¡Tu idea fue enviada con éxito al área de Juventud!");
     }
 
     function voteProject(btn) {
