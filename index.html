@@ -495,7 +495,7 @@
       <button onclick="closeCodeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
       <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4"><i data-lucide="key-round" class="w-6 h-6"></i></div>
       <h3 class="font-display font-black text-2xl text-white mb-2">Canjear Código Municipal</h3>
-      <p class="text-slate-300 text-xs mb-6">Ingresá cualquiera de los 50 códigos oficiales (Ej: MZA-01 hasta MZA-50) para sumar puntos.</p>
+      <p class="text-slate-300 text-xs mb-6">Ingresá cualquiera de los 50 códigos (ej: MZA-01, MZA1 o solo el número del 1 al 50).</p>
       
       <form onsubmit="submitCode(event)" class="space-y-4">
         <input type="text" id="municipal-code" required placeholder="Ej: MZA-01" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-center text-lg font-mono tracking-widest text-amber-400 focus:border-amber-500 focus:outline-none uppercase">
@@ -690,38 +690,51 @@
     }
     function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
     
-    // GENERADOR AUTOMÁTICO DE LOS 50 CÓDIGOS (MZA-01 hasta MZA-50)
-    function isValidMunicipalCode(code) {
-      // 1. Códigos especiales fijos
+    // VALIDACIÓN FLEXIBLE DE CÓDIGOS MUNICIPALES (Acepta MZA-01, MZA1, o solo números del 1 al 50)
+    function normalizeAndValidateCode(inputCode) {
       const fixedCodes = ["MZA-2026", "VERDE", "MENDOZA"];
-      if (fixedCodes.includes(code)) return true;
+      if (fixedCodes.includes(inputCode)) return inputCode;
 
-      // 2. Validación automática para los 50 códigos del MZA-01 al MZA-50 (o MZA-1 al MZA-50)
-      const regex = /^MZA-(?:0?[1-9]|[1-4][0-9]|50)$/;
-      return regex.test(code);
+      // Limpiar espacios y guiones para comparar fácil
+      let clean = inputCode.replace(/[^A-Z0-9]/g, '');
+
+      // Si escribieron solo un número del 1 al 50 (ej: "5" o "12")
+      if (/^(?:[1-9]|[1-4][0-9]|50)$/.test(clean)) {
+        return "MZA-" + clean.padStart(2, '0');
+      }
+
+      // Si escribieron MZA y un número (ej: "MZA1" o "MZA01")
+      let match = clean.match(/^MZA(0?[1-9]|[1-4][0-9]|50)$/);
+      if (match) {
+        return "MZA-" + match[1].padStart(2, '0');
+      }
+
+      return null;
     }
 
     async function submitCode(e) {
       e.preventDefault();
       const codeInput = document.getElementById('municipal-code');
-      const code = codeInput.value.trim().toUpperCase();
+      const rawCode = codeInput.value.trim().toUpperCase();
       
-      if (isValidMunicipalCode(code)) {
-        if (window.usedCodes && window.usedCodes.includes(code)) {
+      const normalizedCode = normalizeAndValidateCode(rawCode);
+
+      if (normalizedCode) {
+        if (window.usedCodes && window.usedCodes.includes(normalizedCode)) {
           closeCodeModal();
           codeInput.value = '';
-          showCustomAlert("Código Ya Utilizado", `Ya habías canjeado el código "${code}" anteriormente. ¡Cada código municipal es de uso único!`);
+          showCustomAlert("Código Ya Utilizado", `Ya habías canjeado el código "${normalizedCode}" anteriormente. ¡Cada código municipal es de uso único!`);
           return;
         }
 
-        window.usedCodes.push(code);
+        window.usedCodes.push(normalizedCode);
         const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
         await window.updateDoc(userRef, { usedCodes: window.usedCodes });
 
         closeCodeModal();
         codeInput.value = '';
         await addPointsToCloud(200);
-        showCustomAlert("¡Código Canjeado con Éxito!", `¡El municipio validó el código "${code}"!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
+        showCustomAlert("¡Código Canjeado con Éxito!", `¡El municipio validó el código "${normalizedCode}"!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
       } else {
         closeCodeModal();
         codeInput.value = '';
