@@ -496,7 +496,7 @@
           closeRegisterModal();
           
           points += 50;
-          updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
+          updatePointsDisplay();
 
           alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.\nTe esperamos en "${selectedEvent}".`);
           formElement.reset();
@@ -515,7 +515,7 @@
       
       if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
         points += 200;
-        updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
+        updatePointsDisplay();
         closeCodeModal();
         alert(`¡Código validado con éxito por el Municipio!\n\nSe acreditaron +200 Puntos de Impacto a tu Pase.`);
       } else {
@@ -523,7 +523,7 @@
       }
     }
 
-    // CANJE DE PREMIOS Y ENVÍO DE QR POR CORREO
+    // CANJE DE PREMIOS Y ENVÍO DE QR POR CORREO (CON ID REAL)
     function claimReward(title, cost) {
       if(points >= cost) {
         const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`);
@@ -542,11 +542,10 @@
           qr_data: qrCodeData
         };
 
-        // Recuerda reemplazar 'TEMPLATE_ID_CANJES' por el ID de tu segunda plantilla en EmailJS
-        emailjs.send('service_5e4mq5l', 'TEMPLATE_ID_CANJES', params)
+        emailjs.send('service_5e4mq5l', 'template_wbvd4sr', params)
           .then(function() {
             points -= cost;
-            updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
+            updatePointsDisplay();
             alert(`¡Canje exitoso! Te enviamos el código QR para "${title}" a tu correo (${userEmail}).`);
           }, function(error) {
             alert("Error al enviar el Pase QR. Intenta nuevamente.");
