@@ -363,7 +363,7 @@
       </button>
       <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">Inscripción Oficial</span>
       <h3 id="reg-event-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Inscribirme al Voluntariado</h3>
-      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará a cambio un código único para acreditar tus puntos.</p>
+      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará un código único para acreditar tus puntos.</p>
       
       <form id="miFormulario" onsubmit="submitRegistration(event)" class="space-y-4">
         <input type="hidden" id="reg-event-hidden" name="event_name">
@@ -442,9 +442,21 @@
   <script>
     lucide.createIcons();
 
-    let points = 0;
+    // SISTEMA DE GUARDADO LOCAL: Carga los puntos guardados en el navegador o inicia en 0
+    let points = parseInt(localStorage.getItem('mendoza_user_points')) || 0;
     let selectedEvent = "";
     let eventPoints = 0;
+
+    // Función para actualizar los puntos en pantalla y guardarlos automáticamente en la memoria del navegador
+    function updatePointsDisplay() {
+      document.getElementById('user-points').innerText = `${points} PTS`;
+      localStorage.setItem('mendoza_user_points', points);
+    }
+
+    // Al cargar la página, asegura que se muestren los puntos guardados
+    document.addEventListener('DOMContentLoaded', () => {
+      updatePointsDisplay();
+    });
 
     function switchTab(id) {
       document.querySelectorAll('.tab-sec').forEach(s => s.classList.add('hidden'));
@@ -473,6 +485,7 @@
       document.getElementById('register-modal').classList.add('hidden');
     }
 
+    // INSCRIPCIÓN Y SUMA DE 50 PUNTOS
     function submitRegistration(e) {
       e.preventDefault();
       const formElement = document.getElementById('miFormulario');
@@ -481,12 +494,15 @@
       emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
         .then(function() {
           closeRegisterModal();
+          
           points += 50;
-          document.getElementById('user-points').innerText = `${points} PTS`;
-          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.`);
+          updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
+
+          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.\nTe esperamos en "${selectedEvent}".`);
           formElement.reset();
         }, function(error) {
-          alert('Hubo un error al enviar el correo: ' + JSON.stringify(error));
+          alert('Hubo un inconveniente al procesar la inscripción. Por favor, intenta nuevamente.');
+          console.log('FAILED...', error);
         });
     }
 
@@ -499,15 +515,15 @@
       
       if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
         points += 200;
-        document.getElementById('user-points').innerText = `${points} PTS`;
+        updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
         closeCodeModal();
         alert(`¡Código validado con éxito por el Municipio!\n\nSe acreditaron +200 Puntos de Impacto a tu Pase.`);
       } else {
-        alert("Código inválido o ya utilizado.");
+        alert("Código inválido o ya utilizado. Verificá con el personal municipal en el evento.");
       }
     }
 
-    // LÓGICA DE CANJE DE PREMIOS CON ENVÍO DE QR POR CORREO
+    // CANJE DE PREMIOS Y ENVÍO DE QR POR CORREO
     function claimReward(title, cost) {
       if(points >= cost) {
         const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`);
@@ -516,7 +532,6 @@
         const userName = prompt("Ingresá tu Nombre y Apellido:");
         if(!userName) return;
 
-        // Generar un código único de validación para el QR
         const qrCodeData = "MZA-REWARD-" + Math.floor(100000 + Math.random() * 900000);
 
         const params = {
@@ -527,18 +542,19 @@
           qr_data: qrCodeData
         };
 
-        // Enviar EmailJS con los parámetros del QR (REEMPLAZA 'TEMPLATE_ID_CANJES' POR TU ID REAL)
+        // Recuerda reemplazar 'TEMPLATE_ID_CANJES' por el ID de tu segunda plantilla en EmailJS
         emailjs.send('service_5e4mq5l', 'TEMPLATE_ID_CANJES', params)
           .then(function() {
             points -= cost;
-            document.getElementById('user-points').innerText = `${points} PTS`;
+            updatePointsDisplay(); // Guarda y actualiza puntos en pantalla
             alert(`¡Canje exitoso! Te enviamos el código QR para "${title}" a tu correo (${userEmail}).`);
           }, function(error) {
-            alert("Error al enviar el Pase QR: " + JSON.stringify(error));
+            alert("Error al enviar el Pase QR. Intenta nuevamente.");
+            console.log('FAILED...', error);
           });
 
       } else {
-        alert(`Necesitás ${cost} PTS para canjear este premio. ¡Actualmente tenés ${points} PTS! Inscribite en voluntariados para sumar más puntos.`);
+        alert(`Necesitás ${cost} PTS para canjear este premio. ¡Actualmente tenés ${points} PTS!`);
       }
     }
 
