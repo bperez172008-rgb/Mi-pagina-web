@@ -28,7 +28,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB1rXtC9tlGROcZhs-w8b8If17U8RB6ABs",
@@ -53,6 +53,7 @@
     window.setDoc = setDoc;
     window.getDoc = getDoc;
     window.updateDoc = updateDoc;
+    window.arrayUnion = arrayUnion;
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -64,15 +65,19 @@
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-          window.userPoints = userSnap.data().points || 0;
+          const data = userSnap.data();
+          window.userPoints = data.points || 0;
+          window.userActivities = data.registeredActivities || [];
         } else {
-          await setDoc(userRef, { email: user.email, points: 0 });
+          await setDoc(userRef, { email: user.email, points: 0, registeredActivities: [] });
           window.userPoints = 0;
+          window.userActivities = [];
         }
         updatePointsDisplay();
       } else {
         window.currentUser = null;
         window.userPoints = 0;
+        window.userActivities = [];
         document.getElementById('auth-not-logged').classList.remove('hidden');
         document.getElementById('auth-logged').classList.add('hidden');
         updatePointsDisplay();
@@ -196,7 +201,7 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 class="font-display text-3xl font-black text-white">Próximos Voluntariados</h2>
-          <p class="text-slate-300 text-sm mt-1">Inscribite con tus datos. Al asistir, sumá puntos directamente a tu cuenta en la nube.</p>
+          <p class="text-slate-300 text-sm mt-1">Inscribite con tus datos. Solo podés registrarte una vez por actividad.</p>
         </div>
       </div>
 
@@ -381,6 +386,20 @@
 
   </main>
 
+  <!-- MODAL DE NOTIFICACIONES PERSONALIZADO (EN VEZ DE ALERT) -->
+  <div id="custom-alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center relative">
+      <div id="alert-icon-container" class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="bell" class="w-6 h-6"></i>
+      </div>
+      <h3 id="alert-title" class="font-display font-black text-xl text-white mb-2">Aviso</h3>
+      <p id="alert-message" class="text-slate-300 text-xs mb-6 leading-relaxed">Mensaje de notificación.</p>
+      <button onclick="closeCustomAlert()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition text-xs">
+        Entendido
+      </button>
+    </div>
+  </div>
+
   <!-- MODAL DE AUTENTICACIÓN -->
   <div id="auth-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8 shadow-2xl relative text-center">
@@ -418,7 +437,7 @@
       <button onclick="closeRegisterModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
       <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">Inscripción Oficial</span>
       <h3 id="reg-event-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Inscribirme al Voluntariado</h3>
-      <p class="text-slate-300 text-xs mb-6">Completá tus datos para recibir tu correo de confirmación y sumar +50 puntos a tu cuenta.</p>
+      <p class="text-slate-300 text-xs mb-6">Completá tus datos para recibir tu correo de confirmación y sumar +50 puntos.</p>
       
       <form id="miFormulario" onsubmit="submitRegistration(event)" class="space-y-4">
         <input type="hidden" id="reg-event-hidden" name="event_name">
@@ -493,9 +512,21 @@
 
     window.currentUser = null;
     window.userPoints = 0;
+    window.userActivities = [];
     let isRegisterMode = false;
     let selectedEvent = "";
     let eventPoints = 0;
+
+    // MODAL DE ALERTA PERSONALIZADO EN PANTALLA
+    function showCustomAlert(title, message) {
+      document.getElementById('alert-title').innerText = title;
+      document.getElementById('alert-message').innerText = message;
+      document.getElementById('custom-alert-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeCustomAlert() {
+      document.getElementById('custom-alert-modal').classList.add('hidden');
+    }
 
     function updatePointsDisplay() {
       document.getElementById('user-points').innerText = `${window.userPoints} PTS`;
@@ -503,7 +534,7 @@
 
     async function addPointsToCloud(amount) {
       if (!window.currentUser) {
-        alert("Debes iniciar sesión para acumular y guardar puntos en la nube.");
+        showCustomAlert("Acceso Requerido", "Debes iniciar sesión para acumular y guardar puntos en la nube.");
         openAuthModal();
         return false;
       }
@@ -559,14 +590,14 @@
       try {
         if (isRegisterMode) {
           await window.createUserWithEmailAndPassword(window.fbAuth, email, password);
-          alert("¡Cuenta creada con éxito!");
+          showCustomAlert("¡Cuenta Creada!", "¡Tu cuenta fue creada con éxito en la nube!");
         } else {
           await window.signInWithEmailAndPassword(window.fbAuth, email, password);
-          alert("¡Bienvenido de nuevo!");
+          showCustomAlert("¡Bienvenido!", "¡Has iniciado sesión correctamente!");
         }
         closeAuthModal();
       } catch (error) {
-        alert("Error de autenticación: " + error.message);
+        showCustomAlert("Error de Autenticación", error.message);
       }
     }
 
@@ -574,16 +605,24 @@
       await window.signOut(window.fbAuth);
       window.currentUser = null;
       window.userPoints = 0;
+      window.userActivities = [];
       updatePointsDisplay();
-      alert("Sesión cerrada correctamente.");
+      showCustomAlert("Sesión Finalizada", "Has cerrado sesión correctamente.");
     }
 
     function openRegisterModal(title, pts) {
       if (!window.currentUser) {
-        alert("Debes iniciar sesión para inscribirte a los voluntariados.");
+        showCustomAlert("Acceso Requerido", "Debes iniciar sesión para inscribirte a los voluntariados.");
         openAuthModal();
         return;
       }
+
+      // VALIDACIÓN: Evita que se inscriba dos veces a la misma actividad
+      if (window.userActivities && window.userActivities.includes(title)) {
+        showCustomAlert("Ya estás inscripto", `Ya te habías registrado anteriormente en "${title}". ¡No puedes duplicar el registro ni sumar puntos dos veces por la misma actividad!`);
+        return;
+      }
+
       selectedEvent = title;
       eventPoints = pts;
       document.getElementById('reg-event-title').innerText = `Inscripción: ${title}`;
@@ -600,17 +639,23 @@
       emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
         .then(async function() {
           closeRegisterModal();
+          
+          // Agrega la actividad a la lista del usuario en Firestore para bloquear futuros registros
+          window.userActivities.push(selectedEvent);
+          const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
+          await window.updateDoc(userRef, { registeredActivities: window.userActivities });
+
           await addPointsToCloud(50);
-          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo y sumaste +50 Puntos a tu cuenta.`);
+          showCustomAlert("¡Inscripción Exitosa!", `¡Felicitaciones ${name}!\n\nSe envió el correo de confirmación y sumaste +50 Puntos a tu cuenta.`);
           formElement.reset();
         }, function(error) {
-          alert('Hubo un inconveniente al procesar la inscripción.');
+          showCustomAlert("Error", "Hubo un inconveniente al procesar la inscripción.");
         });
     }
 
     function openCodeModal() {
       if (!window.currentUser) {
-        alert("Debes iniciar sesión para canjear códigos.");
+        showCustomAlert("Acceso Requerido", "Debes iniciar sesión para canjear códigos.");
         openAuthModal();
         return;
       }
@@ -625,15 +670,15 @@
       if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
         await addPointsToCloud(200);
         closeCodeModal();
-        alert(`¡Código validado con éxito!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
+        showCustomAlert("¡Código Canjeado!", "¡El municipio validó tu código con éxito! Se acreditaron +200 Puntos a tu cuenta.");
       } else {
-        alert("Código inválido o ya utilizado.");
+        showCustomAlert("Código Inválido", "El código ingresado es incorrecto o ya fue utilizado.");
       }
     }
 
     async function claimReward(title, cost) {
       if (!window.currentUser) {
-        alert("Debes iniciar sesión para canjear beneficios.");
+        showCustomAlert("Acceso Requerido", "Debes iniciar sesión para canjear beneficios.");
         openAuthModal();
         return;
       }
@@ -662,13 +707,13 @@
             const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
             await window.updateDoc(userRef, { points: window.userPoints });
             
-            alert(`¡Canje exitoso! Te enviamos el código QR a (${userEmail}).`);
+            showCustomAlert("¡Canje Exitoso!", `¡Te enviamos el código QR para "${title}" a tu correo (${userEmail})!`);
           }, function(error) {
-            alert("Error al enviar el Pase QR.");
+            showCustomAlert("Error de Envío", "Hubo un error al enviar el Pase QR por correo.");
           });
 
       } else {
-        alert(`Necesitás ${cost} PTS. Actualmente tenés ${window.userPoints} PTS.`);
+        showCustomAlert("Puntos Insuficientes", `Necesitás ${cost} PTS para canjear este premio. Actualmente tenés ${window.userPoints} PTS.`);
       }
     }
 
@@ -701,7 +746,7 @@
       grid.prepend(card);
       lucide.createIcons();
       closeModal();
-      alert('¡Propuesta subida con éxito!');
+      showCustomAlert("Propuesta Publicada", "¡Tu idea fue enviada con éxito!");
     }
 
     function voteProject(btn) {
