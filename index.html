@@ -68,16 +68,19 @@
           const data = userSnap.data();
           window.userPoints = data.points || 0;
           window.userActivities = data.registeredActivities || [];
+          window.usedCodes = data.usedCodes || [];
         } else {
-          await setDoc(userRef, { email: user.email, points: 0, registeredActivities: [] });
+          await setDoc(userRef, { email: user.email, points: 0, registeredActivities: [], usedCodes: [] });
           window.userPoints = 0;
           window.userActivities = [];
+          window.usedCodes = [];
         }
         updatePointsDisplay();
       } else {
         window.currentUser = null;
         window.userPoints = 0;
         window.userActivities = [];
+        window.usedCodes = [];
         document.getElementById('auth-not-logged').classList.remove('hidden');
         document.getElementById('auth-logged').classList.add('hidden');
         updatePointsDisplay();
@@ -539,6 +542,7 @@
     window.currentUser = null;
     window.userPoints = 0;
     window.userActivities = [];
+    window.usedCodes = [];
     let isRegisterMode = false;
     let selectedEvent = "";
     let eventPoints = 0;
@@ -631,6 +635,7 @@
       window.currentUser = null;
       window.userPoints = 0;
       window.userActivities = [];
+      window.usedCodes = [];
       updatePointsDisplay();
       showCustomAlert("Sesión Finalizada", "Has cerrado sesión correctamente.");
     }
@@ -687,19 +692,37 @@
     
     async function submitCode(e) {
       e.preventDefault();
-      const code = document.getElementById('municipal-code').value.trim().toUpperCase();
+      const codeInput = document.getElementById('municipal-code');
+      const code = codeInput.value.trim().toUpperCase();
       
-      if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
-        await addPointsToCloud(200);
+      const validCodes = ["MZA-2026", "VERDE", "MENDOZA"];
+
+      if (validCodes.includes(code)) {
+        // Control estricto para que cada código se use una sola vez por usuario
+        if (window.usedCodes && window.usedCodes.includes(code)) {
+          closeCodeModal();
+          codeInput.value = '';
+          showCustomAlert("Código Ya Utilizado", "Ya habías canjeado este código anteriormente. ¡Cada código municipal es de uso único por usuario!");
+          return;
+        }
+
+        // Registrar código como usado en la nube
+        window.usedCodes.push(code);
+        const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
+        await window.updateDoc(userRef, { usedCodes: window.usedCodes });
+
         closeCodeModal();
-        document.getElementById('municipal-code').value = '';
-        showCustomAlert("¡Código Canjeado!", "¡El municipio validó tu código con éxito! Se acreditaron +200 Puntos a tu cuenta.");
+        codeInput.value = '';
+        await addPointsToCloud(200);
+        showCustomAlert("¡Código Canjeado con Éxito!", `¡El municipio validó el código "${code}"!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
       } else {
-        showCustomAlert("Código Inválido", "El código ingresado es incorrecto o ya fue utilizado.");
+        closeCodeModal();
+        codeInput.value = '';
+        showCustomAlert("Código Inválido", "El código ingresado no existe o es incorrecto. Verificá con el personal municipal.");
       }
     }
 
-    // GESTIÓN DE CANJE CON MODAL
+    // GESTIÓN DE CANJE DE PREMIOS CON MODAL
     function openRewardModal(title, cost) {
       if (!window.currentUser) {
         showCustomAlert("Acceso Requerido", "Debes iniciar sesión para canjear beneficios.");
@@ -717,7 +740,6 @@
       document.getElementById('reward-modal-title').innerText = `Canjear: ${title}`;
       document.getElementById('reward-modal-desc').innerText = `Este beneficio cuesta ${cost} PTS. Se te enviará el código QR a tu correo.`;
       
-      // Prellenar con el email del usuario logueado si existe
       if (window.currentUser && window.currentUser.email) {
         document.getElementById('rw-useremail').value = window.currentUser.email;
       }
