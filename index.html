@@ -24,23 +24,70 @@
      })();
   </script>
 
+  <!-- FIREBASE SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB1rXtC9tlGROcZhs-w8b8If17U8RB6ABs",
+      authDomain: "mendoza-activa.firebaseapp.com",
+      projectId: "mendoza-activa",
+      storageBucket: "mendoza-activa.firebasestorage.app",
+      messagingSenderId: "346306921348",
+      appId: "1:346306921348:web:c59f88b1a5b6b0302593d1",
+      measurementId: "G-FSLTMV81Y3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.fbAuth = auth;
+    window.fbDb = db;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOut = signOut;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.getDoc = getDoc;
+    window.updateDoc = updateDoc;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        window.currentUser = user;
+        document.getElementById('auth-user-name').innerText = user.email.split('@')[0];
+        document.getElementById('auth-not-logged').classList.add('hidden');
+        document.getElementById('auth-logged').classList.remove('hidden');
+
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          window.userPoints = userSnap.data().points || 0;
+        } else {
+          await setDoc(userRef, { email: user.email, points: 0 });
+          window.userPoints = 0;
+        }
+        updatePointsDisplay();
+      } else {
+        window.currentUser = null;
+        window.userPoints = 0;
+        document.getElementById('auth-not-logged').classList.remove('hidden');
+        document.getElementById('auth-logged').classList.add('hidden');
+        updatePointsDisplay();
+      }
+    });
+  </script>
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            mendoza: {
-              main: '#0f392b',
-              accent: '#10b981',
-              wine: '#800020',
-              gold: '#f59e0b',
-              dark: '#1e293b'
-            }
+            mendoza: { main: '#0f392b', accent: '#10b981', wine: '#800020', gold: '#f59e0b', dark: '#1e293b' }
           },
-          fontFamily: {
-            sans: ['Plus Jakarta Sans', 'sans-serif'],
-            display: ['Outfit', 'sans-serif']
-          }
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], display: ['Outfit', 'sans-serif'] }
         }
       }
     }
@@ -48,7 +95,7 @@
 </head>
 <body class="bg-[#1e293b] text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white relative overflow-x-hidden">
 
-  <!-- LOGO DE FONDO EN SU COLOR REAL Y VISIBLE -->
+  <!-- LOGO DE FONDO -->
   <div class="fixed inset-0 pointer-events-none flex items-center justify-center z-0 opacity-15 overflow-hidden">
     <img src="https://logosandtypes.com/wp-content/uploads/2024/02/Ciudad-de-Mendoza.png" alt="Marca de agua Mendoza" class="w-[75vw] max-w-[850px] object-contain">
   </div>
@@ -73,7 +120,6 @@
       <div class="flex justify-between items-center h-20">
         
         <div class="flex items-center gap-3">
-          <!-- LOGO OFICIAL CIUDAD DE MENDOZA -->
           <img src="https://logosandtypes.com/wp-content/uploads/2024/02/Ciudad-de-Mendoza.png" alt="Logo Ciudad de Mendoza" class="w-11 h-11 object-contain">
           <div>
             <div class="font-display font-black text-xl tracking-wide text-white leading-none">MENDOZA <span class="text-emerald-400">ACTIVA</span></div>
@@ -94,7 +140,6 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <!-- BOTÓN PARA CANJEAR CÓDIGO MUNICIPAL -->
           <button onclick="openCodeModal()" class="bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
             <i data-lucide="key-round" class="w-4 h-4"></i> Canjear Código
           </button>
@@ -108,6 +153,18 @@
               <p id="user-points" class="font-display font-black text-amber-400 text-base leading-none">0 PTS</p>
             </div>
           </div>
+
+          <div id="auth-not-logged">
+            <button onclick="openAuthModal()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition">
+              Iniciar Sesión
+            </button>
+          </div>
+          <div id="auth-logged" class="hidden flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl">
+            <span id="auth-user-name" class="text-xs font-bold text-emerald-400">Usuario</span>
+            <button onclick="logoutUser()" class="text-slate-400 hover:text-red-400 transition" title="Cerrar Sesión">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -117,37 +174,17 @@
   <!-- HERO -->
   <section class="relative overflow-hidden py-16 sm:py-24 border-b border-slate-700 bg-slate-900/60 backdrop-blur-sm z-10">
     <div class="absolute inset-0 bg-gradient-to-t from-[#1e293b] via-transparent to-transparent"></div>
-
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-      
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold mb-6 backdrop-blur-md">
         <i data-lucide="award" class="w-4 h-4"></i>
-        <span>Nivel Actual: <strong>Guardián Urbano</strong> (+150 pts para subir de nivel)</span>
+        <span>Nivel Actual: <strong>Guardián Urbano</strong></span>
       </div>
-
       <h1 class="font-display text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight max-w-5xl leading-[1.1]">
         Tu acción transforma a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-400 bg-clip-text text-transparent">Mendoza</span>
       </h1>
-      
       <p class="mt-6 text-base sm:text-lg text-slate-300 max-w-2xl font-normal leading-relaxed">
-        Inscribite en los voluntariados, asistí presencialmente, recibí tu código del municipio y sumá puntos para canjear por beneficios reales.
+        Inscribite en los voluntariados, iniciá sesión en tu cuenta y acumulá puntos en la nube para canjear por beneficios reales.
       </p>
-
-      <div class="mt-10 grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-3xl">
-        <div class="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl shadow-lg backdrop-blur-sm">
-          <p class="font-display text-2xl sm:text-3xl font-black text-emerald-400">+1.250</p>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Jóvenes Inscriptos</p>
-        </div>
-        <div class="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl shadow-lg backdrop-blur-sm">
-          <p class="font-display text-2xl sm:text-3xl font-black text-amber-400">3.400</p>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Beneficios Canjeados</p>
-        </div>
-        <div class="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl shadow-lg col-span-2 md:col-span-1 backdrop-blur-sm">
-          <p class="font-display text-2xl sm:text-3xl font-black text-teal-300">48</p>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Proyectos Votados</p>
-        </div>
-      </div>
-
     </div>
   </section>
 
@@ -159,12 +196,11 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 class="font-display text-3xl font-black text-white">Próximos Voluntariados</h2>
-          <p class="text-slate-300 text-sm mt-1">Inscribite con tus datos. Cuando vayas al evento, el municipio te dará un código para sumar tus puntos.</p>
+          <p class="text-slate-300 text-sm mt-1">Inscribite con tus datos. Al asistir, sumá puntos directamente a tu cuenta en la nube.</p>
         </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Tarjeta 1 -->
         <div class="bg-slate-900/95 backdrop-blur-sm rounded-3xl border border-slate-700 overflow-hidden flex flex-col justify-between shadow-xl">
           <div>
             <div class="relative h-48 bg-slate-800">
@@ -188,7 +224,6 @@
           </div>
         </div>
 
-        <!-- Tarjeta 2 -->
         <div class="bg-slate-900/95 backdrop-blur-sm rounded-3xl border border-slate-700 overflow-hidden flex flex-col justify-between shadow-xl">
           <div>
             <div class="relative h-48 bg-slate-800">
@@ -212,7 +247,6 @@
           </div>
         </div>
 
-        <!-- Tarjeta 3 -->
         <div class="bg-slate-900/95 backdrop-blur-sm rounded-3xl border border-slate-700 overflow-hidden flex flex-col justify-between shadow-xl">
           <div>
             <div class="relative h-48 bg-slate-800">
@@ -242,15 +276,13 @@
     <div id="sec-recompensas" class="tab-sec hidden space-y-10">
       <div>
         <h2 class="font-display text-3xl font-black text-white">Beneficios & Canjes</h2>
-        <p class="text-slate-300 text-sm mt-1">Usá tus puntos de impacto para acceder a beneficios reales.</p>
+        <p class="text-slate-300 text-sm mt-1">Usá tus puntos guardados en la nube para acceder a beneficios reales.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-slate-900/95 backdrop-blur-sm p-6 rounded-3xl border border-slate-700 shadow-xl flex flex-col justify-between">
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4">
-              <i data-lucide="bike" class="w-6 h-6"></i>
-            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4"><i data-lucide="bike" class="w-6 h-6"></i></div>
             <h3 class="font-display font-bold text-lg text-white">10 Viajes BiciTran</h3>
             <p class="text-xs text-slate-300 mt-1">Pase liberado para el sistema de bicicletas.</p>
           </div>
@@ -262,9 +294,7 @@
 
         <div class="bg-slate-900/95 backdrop-blur-sm p-6 rounded-3xl border border-slate-700 shadow-xl flex flex-col justify-between">
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4">
-              <i data-lucide="ticket" class="w-6 h-6"></i>
-            </div>
+            <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4"><i data-lucide="ticket" class="w-6 h-6"></i></div>
             <h3 class="font-display font-bold text-lg text-white">Entrada Nave Cultural</h3>
             <p class="text-xs text-slate-300 mt-1">Par de entradas para obras de teatro o recitales.</p>
           </div>
@@ -276,9 +306,7 @@
 
         <div class="bg-slate-900/95 backdrop-blur-sm p-6 rounded-3xl border border-slate-700 shadow-xl flex flex-col justify-between">
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4">
-              <i data-lucide="coffee" class="w-6 h-6"></i>
-            </div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4"><i data-lucide="coffee" class="w-6 h-6"></i></div>
             <h3 class="font-display font-bold text-lg text-white">2x1 Cafeterías Arístides</h3>
             <p class="text-xs text-slate-300 mt-1">Válido en la red gastronómica adherida.</p>
           </div>
@@ -290,9 +318,7 @@
 
         <div class="bg-slate-900/95 backdrop-blur-sm p-6 rounded-3xl border border-slate-700 shadow-xl flex flex-col justify-between">
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-4">
-              <i data-lucide="trees" class="w-6 h-6"></i>
-            </div>
+            <div class="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-4"><i data-lucide="trees" class="w-6 h-6"></i></div>
             <h3 class="font-display font-bold text-lg text-white">Kit Plantines Nativos</h3>
             <p class="text-xs text-slate-300 mt-1">Pack provisto por el Vivero Municipal.</p>
           </div>
@@ -355,15 +381,44 @@
 
   </main>
 
-  <!-- MODAL DE INSCRIPCIÓN AL VOLUNTARIADO -->
+  <!-- MODAL DE AUTENTICACIÓN -->
+  <div id="auth-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8 shadow-2xl relative text-center">
+      <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="user-check" class="w-6 h-6"></i>
+      </div>
+      <h3 id="auth-modal-title" class="font-display font-black text-2xl text-white mb-2">Iniciar Sesión</h3>
+      <p class="text-slate-300 text-xs mb-6">Accede con tu cuenta para sincronizar tus puntos en la nube.</p>
+      
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-4 text-left">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Correo Electrónico</label>
+          <input type="email" id="auth-email" required placeholder="tuemail@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Contraseña</label>
+          <input type="password" id="auth-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <button type="submit" id="auth-submit-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition">
+          Ingresar
+        </button>
+      </form>
+
+      <div class="mt-6 text-xs text-slate-400">
+        <span id="auth-switch-text">¿No tienes cuenta?</span> 
+        <button onclick="toggleAuthMode()" class="text-emerald-400 font-bold hover:underline ml-1">Regístrate aquí</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE INSCRIPCIÓN -->
   <div id="register-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-8 shadow-2xl relative">
-      <button onclick="closeRegisterModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-6 h-6"></i>
-      </button>
+      <button onclick="closeRegisterModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
       <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">Inscripción Oficial</span>
       <h3 id="reg-event-title" class="font-display font-black text-2xl text-white mt-2 mb-1">Inscribirme al Voluntariado</h3>
-      <p class="text-slate-300 text-xs mb-6">Completá tus datos. Al asistir al evento, el personal del municipio te entregará un código único para acreditar tus puntos.</p>
+      <p class="text-slate-300 text-xs mb-6">Completá tus datos para recibir tu correo de confirmación y sumar +50 puntos a tu cuenta.</p>
       
       <form id="miFormulario" onsubmit="submitRegistration(event)" class="space-y-4">
         <input type="hidden" id="reg-event-hidden" name="event_name">
@@ -386,17 +441,13 @@
     </div>
   </div>
 
-  <!-- MODAL DE CANJEAR CÓDIGO MUNICIPAL -->
+  <!-- MODAL CÓDIGO MUNICIPAL -->
   <div id="code-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8 shadow-2xl relative text-center">
-      <button onclick="closeCodeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-6 h-6"></i>
-      </button>
-      <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <i data-lucide="key-round" class="w-6 h-6"></i>
-      </div>
+      <button onclick="closeCodeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4"><i data-lucide="key-round" class="w-6 h-6"></i></div>
       <h3 class="font-display font-black text-2xl text-white mb-2">Canjear Código Municipal</h3>
-      <p class="text-slate-300 text-xs mb-6">Ingresá el código de 6 dígitos que te entregó el representante del municipio al finalizar el voluntariado.</p>
+      <p class="text-slate-300 text-xs mb-6">Ingresá el código entregado por el municipio para sumar puntos a tu cuenta en la nube.</p>
       
       <form onsubmit="submitCode(event)" class="space-y-4">
         <input type="text" id="municipal-code" required placeholder="Ej: MZA-2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-center text-lg font-mono tracking-widest text-amber-400 focus:border-amber-500 focus:outline-none uppercase">
@@ -407,12 +458,10 @@
     </div>
   </div>
 
-  <!-- MODAL DE PROPUESTA -->
+  <!-- MODAL PROPUESTA -->
   <div id="proposal-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-8 shadow-2xl relative">
-      <button onclick="closeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-6 h-6"></i>
-      </button>
+      <button onclick="closeModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
       <h3 class="font-display font-black text-2xl text-white mb-2">Nueva Propuesta Urbana</h3>
       <p class="text-slate-300 text-xs mb-6">Tu idea se enviará al área de Juventud del Municipio.</p>
       
@@ -438,25 +487,33 @@
     </div>
   </footer>
 
-  <!-- SCRIPT JS -->
+  <!-- SCRIPT GENERAL -->
   <script>
     lucide.createIcons();
 
-    // SISTEMA DE GUARDADO LOCAL: Carga los puntos guardados en el navegador o inicia en 0
-    let points = parseInt(localStorage.getItem('mendoza_user_points')) || 0;
+    window.currentUser = null;
+    window.userPoints = 0;
+    let isRegisterMode = false;
     let selectedEvent = "";
     let eventPoints = 0;
 
-    // Función para actualizar los puntos en pantalla y guardarlos automáticamente en la memoria del navegador
     function updatePointsDisplay() {
-      document.getElementById('user-points').innerText = `${points} PTS`;
-      localStorage.setItem('mendoza_user_points', points);
+      document.getElementById('user-points').innerText = `${window.userPoints} PTS`;
     }
 
-    // Al cargar la página, asegura que se muestren los puntos guardados
-    document.addEventListener('DOMContentLoaded', () => {
+    async function addPointsToCloud(amount) {
+      if (!window.currentUser) {
+        alert("Debes iniciar sesión para acumular y guardar puntos en la nube.");
+        openAuthModal();
+        return false;
+      }
+      window.userPoints += amount;
       updatePointsDisplay();
-    });
+      
+      const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
+      await window.updateDoc(userRef, { points: window.userPoints });
+      return true;
+    }
 
     function switchTab(id) {
       document.querySelectorAll('.tab-sec').forEach(s => s.classList.add('hidden'));
@@ -474,59 +531,115 @@
       }
     }
 
+    function openAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
+    function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      const title = document.getElementById('auth-modal-title');
+      const btn = document.getElementById('auth-submit-btn');
+      const switchText = document.getElementById('auth-switch-text');
+
+      if (isRegisterMode) {
+        title.innerText = "Crear Cuenta Nueva";
+        btn.innerText = "Registrarse";
+        switchText.innerText = "¿Ya tienes una cuenta?";
+      } else {
+        title.innerText = "Iniciar Sesión";
+        btn.innerText = "Ingresar";
+        switchText.innerText = "¿No tienes cuenta?";
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+
+      try {
+        if (isRegisterMode) {
+          await window.createUserWithEmailAndPassword(window.fbAuth, email, password);
+          alert("¡Cuenta creada con éxito!");
+        } else {
+          await window.signInWithEmailAndPassword(window.fbAuth, email, password);
+          alert("¡Bienvenido de nuevo!");
+        }
+        closeAuthModal();
+      } catch (error) {
+        alert("Error de autenticación: " + error.message);
+      }
+    }
+
+    async function logoutUser() {
+      await window.signOut(window.fbAuth);
+      window.currentUser = null;
+      window.userPoints = 0;
+      updatePointsDisplay();
+      alert("Sesión cerrada correctamente.");
+    }
+
     function openRegisterModal(title, pts) {
+      if (!window.currentUser) {
+        alert("Debes iniciar sesión para inscribirte a los voluntariados.");
+        openAuthModal();
+        return;
+      }
       selectedEvent = title;
       eventPoints = pts;
       document.getElementById('reg-event-title').innerText = `Inscripción: ${title}`;
       document.getElementById('reg-event-hidden').value = title;
       document.getElementById('register-modal').classList.remove('hidden');
     }        
-    function closeRegisterModal() {
-      document.getElementById('register-modal').classList.add('hidden');
-    }
+    function closeRegisterModal() { document.getElementById('register-modal').classList.add('hidden'); }
 
-    // INSCRIPCIÓN Y SUMA DE 50 PUNTOS
-    function submitRegistration(e) {
+    async function submitRegistration(e) {
       e.preventDefault();
       const formElement = document.getElementById('miFormulario');
       const name = document.getElementById('reg-name').value;
 
       emailjs.sendForm('service_5e4mq5l', 'template_1ljk3tl', formElement)
-        .then(function() {
+        .then(async function() {
           closeRegisterModal();
-          
-          points += 50;
-          updatePointsDisplay();
-
-          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo correctamente y sumaste +50 Puntos de regalo.\nTe esperamos en "${selectedEvent}".`);
+          await addPointsToCloud(50);
+          alert(`¡Inscripción exitosa para ${name}!\n\nSe envió el correo y sumaste +50 Puntos a tu cuenta.`);
           formElement.reset();
         }, function(error) {
-          alert('Hubo un inconveniente al procesar la inscripción. Por favor, intenta nuevamente.');
-          console.log('FAILED...', error);
+          alert('Hubo un inconveniente al procesar la inscripción.');
         });
     }
 
-    function openCodeModal() { document.getElementById('code-modal').classList.remove('hidden'); }
+    function openCodeModal() {
+      if (!window.currentUser) {
+        alert("Debes iniciar sesión para canjear códigos.");
+        openAuthModal();
+        return;
+      }
+      document.getElementById('code-modal').classList.remove('hidden');
+    }
     function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
     
-    function submitCode(e) {
+    async function submitCode(e) {
       e.preventDefault();
       const code = document.getElementById('municipal-code').value.trim().toUpperCase();
       
       if(code === "MZA-2026" || code === "VERDE" || code === "MENDOZA") {
-        points += 200;
-        updatePointsDisplay();
+        await addPointsToCloud(200);
         closeCodeModal();
-        alert(`¡Código validado con éxito por el Municipio!\n\nSe acreditaron +200 Puntos de Impacto a tu Pase.`);
+        alert(`¡Código validado con éxito!\n\nSe acreditaron +200 Puntos a tu cuenta.`);
       } else {
-        alert("Código inválido o ya utilizado. Verificá con el personal municipal en el evento.");
+        alert("Código inválido o ya utilizado.");
       }
     }
 
-    // CANJE DE PREMIOS Y ENVÍO DE QR POR CORREO (CON ID REAL)
-    function claimReward(title, cost) {
-      if(points >= cost) {
-        const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`);
+    async function claimReward(title, cost) {
+      if (!window.currentUser) {
+        alert("Debes iniciar sesión para canjear beneficios.");
+        openAuthModal();
+        return;
+      }
+
+      if(window.userPoints >= cost) {
+        const userEmail = prompt(`Ingresá tu correo electrónico para enviarte el Pase QR de "${title}":`, window.currentUser.email);
         if(!userEmail) return;
 
         const userName = prompt("Ingresá tu Nombre y Apellido:");
@@ -543,17 +656,19 @@
         };
 
         emailjs.send('service_5e4mq5l', 'template_wbvd4sr', params)
-          .then(function() {
-            points -= cost;
+          .then(async function() {
+            window.userPoints -= cost;
             updatePointsDisplay();
-            alert(`¡Canje exitoso! Te enviamos el código QR para "${title}" a tu correo (${userEmail}).`);
+            const userRef = window.doc(window.fbDb, "users", window.currentUser.uid);
+            await window.updateDoc(userRef, { points: window.userPoints });
+            
+            alert(`¡Canje exitoso! Te enviamos el código QR a (${userEmail}).`);
           }, function(error) {
-            alert("Error al enviar el Pase QR. Intenta nuevamente.");
-            console.log('FAILED...', error);
+            alert("Error al enviar el Pase QR.");
           });
 
       } else {
-        alert(`Necesitás ${cost} PTS para canjear este premio. ¡Actualmente tenés ${points} PTS!`);
+        alert(`Necesitás ${cost} PTS. Actualmente tenés ${window.userPoints} PTS.`);
       }
     }
 
@@ -564,7 +679,6 @@
       e.preventDefault();
       const title = document.getElementById('p-title').value;
       const desc = document.getElementById('p-desc').value;
-
       const grid = document.getElementById('projects-grid');
       const card = document.createElement('div');
       card.className = 'bg-slate-900/95 backdrop-blur-sm p-6 rounded-3xl border border-slate-700 shadow-xl flex flex-col justify-between';
@@ -584,7 +698,6 @@
           </button>
         </div>
       `;
-
       grid.prepend(card);
       lucide.createIcons();
       closeModal();
